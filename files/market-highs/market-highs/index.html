@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한미 시장 신고가 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #13131a;
+  --bg3: #1c1c26;
+  --border: rgba(255,255,255,0.07);
+  --text: #e8e8f0;
+  --muted: #7070a0;
+  --accent-us: #4f8ef7;
+  --accent-kr: #f7a44f;
+  --accent-both: #4fc78e;
+  --up: #3ecf8e;
+  --hist: #f7a44f;
+  --font: 'Noto Sans KR', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--font); font-size:14px; line-height:1.6; }
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0;
+  background: rgba(10,10,15,0.92);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+.logo { font-size:15px; font-weight:500; letter-spacing:0.01em; }
+.logo span { color: var(--muted); font-weight:300; margin-left:6px; font-size:13px; }
+.date-nav { display:flex; align-items:center; gap:8px; }
+.date-nav select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.container { max-width: 1280px; margin: 0 auto; padding: 2rem; }
+
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+}
+.stat-label { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+.stat-value { font-size: 26px; font-weight: 700; font-family: var(--mono); }
+.stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.c-us { color: var(--accent-us); }
+.c-kr { color: var(--accent-kr); }
+.c-hist { color: var(--hist); }
+.c-up { color: var(--up); }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+.section-header h2 { font-size: 14px; font-weight: 500; }
+.badge {
+  font-size: 10px; font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-family: var(--mono);
+}
+.badge-us { background: rgba(79,142,247,0.15); color: var(--accent-us); }
+.badge-kr { background: rgba(247,164,79,0.15); color: var(--accent-kr); }
+.badge-hist { background: rgba(247,164,79,0.25); color: var(--hist); }
+.badge-both { background: rgba(79,199,142,0.15); color: var(--accent-both); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.chart-wrap { position: relative; width: 100%; height: 260px; margin-top: 1rem; }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 2rem; }
+.theme-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+}
+.theme-name { font-size: 13px; font-weight: 500; margin: 6px 0 4px; }
+.theme-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.theme-tickers { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 6px; font-family: var(--mono); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { font-size: 10px; color: var(--muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); letter-spacing: 0.04em; text-transform: uppercase; font-weight: 400; }
+td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.td-up { color: var(--up); font-family: var(--mono); font-weight: 500; }
+.td-hist { color: var(--hist); font-family: var(--mono); font-weight: 500; }
+.td-mono { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+.full-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem; overflow-x: auto; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
+.tab {
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+.tab.active { background: var(--bg3); color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+.tag-hist {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(247,164,79,0.2);
+  color: var(--hist);
+  font-family: var(--mono);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+footer a { color: var(--accent-us); text-decoration: none; }
+
+@media (max-width: 900px) {
+  .stat-row { grid-template-columns: repeat(2,1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .theme-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .container { padding: 1rem; }
+  .theme-grid { grid-template-columns: 1fr; }
+  header { padding: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">한미 신고가 대시보드 <span>Market Highs Tracker</span></div>
+  <div class="date-nav">
+    <select id="dateSelect" onchange="loadDate(this.value)">
+      <option value="2026-04-26">2026-04-26</option>
+    </select>
+  </div>
+</header>
+
+<div class="container">
+  <div id="content">
+    <div style="color:var(--muted);padding:4rem;text-align:center;">데이터 불러오는 중...</div>
+  </div>
+</div>
+
+<footer>
+  데이터 기준: S&P500 + NASDAQ100 (미국), 코스피 + 코스닥 (한국) &nbsp;|&nbsp;
+  <a href="https://github.com/YOUR_USERNAME/market-highs" target="_blank">GitHub</a>
+  &nbsp;|&nbsp; 매일 장 마감 후 업데이트
+</footer>
+
+<script>
+const DATES = ['2026-04-26'];
+
+function getChartColors() {
+  return { grid: 'rgba(255,255,255,0.05)', text: '#7070a0' };
+}
+
+const SECTOR_COLORS_US = {
+  'Information Technology': '#4f8ef7',
+  'Energy': '#f7a44f',
+  'Consumer Discretionary': '#4fc78e',
+  'Communication Services': '#c74fc7',
+  'Materials': '#f7f74f',
+  'Industrials': '#4fd4f7',
+  'Technology': '#8e4ff7',
+  'Financials': '#f74f6e',
+  'Consumer Staples': '#f7c44f',
+};
+
+const THEME_COLORS_KR = {
+  '반도체/전자': '#4f8ef7',
+  '전력/에너지': '#f7a44f',
+  '방산/조선': '#4fc78e',
+  '소재/화학': '#f7f74f',
+  '유통/소비': '#c74fc7',
+  '바이오': '#f74f6e',
+  '기타': '#7070a0',
+};
+
+function classifyKR(name) {
+  const semi = ['반도체','전자','PCB','회로','메모리','파운드','소자','센서','이노텍','하이텍','마이크론','세미','디케이','하나마이크','심텍','대덕','고영','코리아써','원익','엑시콘','아이앤씨','와이씨','비씨엔씨','주성','에이디','피에스케이','프로텍','이오테크','티씨케이','월덱스','비엠티','샘씨엔에스','와이솔','슈프리마','싸이맥스','제주반도체','SFA','LB세미콘','네패스','아스플로','에이엘티','피엠티','쏘닉스','성광벤드'];
+  const energy = ['전기','전선','에너지','파워','전력','ELECTRIC','일진','효성','LS','대한전선','두산퓨얼','한전','산일'];
+  const defense = ['조선','중공업','엔진','방산','마린','STX','한화엔진','두산밥캣','HD건설','HD현대중','한화갤'];
+  const chem = ['화학','소재','머트리얼즈','케이씨','롯데정밀','덕산','원익머트','동진','나노신소','에프엔에스','이엔에프'];
+  const retail = ['쇼핑','신세계','신라','에이피알','달바','인터로조','GS글로벌','수산인더','미래산업'];
+  const bio = ['바이오','메디칼','큐로셀','선바이오','리센스'];
+
+  for (const kw of semi) if (name.includes(kw)) return '반도체/전자';
+  for (const kw of energy) if (name.includes(kw)) return '전력/에너지';
+  for (const kw of defense) if (name.includes(kw)) return '방산/조선';
+  for (const kw of chem) if (name.includes(kw)) return '소재/화학';
+  for (const kw of retail) if (name.includes(kw)) return '유통/소비';
+  for (const kw of bio) if (name.includes(kw)) return '바이오';
+  return '기타';
+}
+
+let charts = [];
+function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }
+
+async function loadDate(date) {
+  destroyCharts();
+  document.getElementById('content').innerHTML = '<div style="color:var(--muted);padding:4rem;text-align:center;">데이터 불러오는 중...</div>';
+  const res = await fetch(`data/${date}/data.json`);
+  const d = await res.json();
+  render(d);
+}
+
+function render(d) {
+  const { kr, us } = d;
+  const histCount = kr.historical_high.length;
+  const w52Count = histCount + kr.week52_only.length;
+  const topHist = kr.historical_high[0];
+  const topUS = us.week52[0];
+  const c = getChartColors();
+
+  // sector count US
+  const sectorCount = {};
+  us.week52.forEach(s => { sectorCount[s.sector] = (sectorCount[s.sector]||0)+1; });
+  const sectorLabels = Object.keys(sectorCount).sort((a,b) => sectorCount[b]-sectorCount[a]);
+  const sectorData = sectorLabels.map(l => sectorCount[l]);
+  const sectorColors = sectorLabels.map(l => SECTOR_COLORS_US[l] || '#7070a0');
+
+  // theme count KR
+  const themeCounts = {};
+  [...kr.historical_high, ...kr.week52_only].forEach(s => {
+    const t = classifyKR(s.name);
+    themeCounts[t] = (themeCounts[t]||0)+1;
+  });
+  const themeLabels = Object.keys(themeCounts).sort((a,b) => themeCounts[b]-themeCounts[a]);
+  const themeData = themeLabels.map(l => themeCounts[l]);
+  const themeColors = themeLabels.map(l => THEME_COLORS_KR[l] || '#7070a0');
+
+  // Top 30 KR combined (hist first, then 52w only)
+  const krAll = [...kr.historical_high.map(r=>({...r,is_hist:true})), ...kr.week52_only.map(r=>({...r,is_hist:false}))]
+    .sort((a,b) => b.change_pct - a.change_pct);
+
+  document.getElementById('content').innerHTML = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">미국 52주 신고가</div><div class="stat-value c-us">${us.week52.length}</div><div class="stat-sub">S&P500 + NASDAQ100</div></div>
+      <div class="stat-card"><div class="stat-label">한국 52주 신고가</div><div class="stat-value c-kr">${w52Count}</div><div class="stat-sub">코스피 + 코스닥</div></div>
+      <div class="stat-card"><div class="stat-label">한국 역사적 신고가</div><div class="stat-value c-hist">${histCount}</div><div class="stat-sub">52주 신고가의 ${((histCount/w52Count)*100).toFixed(0)}%</div></div>
+      <div class="stat-card"><div class="stat-label">최고 등락 (한국)</div><div class="stat-value c-up">+${topHist.change_pct.toFixed(2)}%</div><div class="stat-sub">${topHist.name}</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="section-header">
+          <h2>미국 — 섹터별 52주 신고가</h2>
+          <span class="badge badge-us">S&P500 + NASDAQ100</span>
+        </div>
+        <div class="chart-wrap"><canvas id="usChart" role="img" aria-label="미국 섹터별 52주 신고가 종목수"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="section-header">
+          <h2>한국 — 테마별 신고가 분포</h2>
+          <span class="badge badge-kr">코스피 + 코스닥</span>
+        </div>
+        <div class="chart-wrap"><canvas id="krChart" role="img" aria-label="한국 테마별 신고가 분포"></canvas></div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-header" style="margin-bottom:1rem;">
+      <h2>공통 시장 테마</h2>
+      <span class="badge badge-both">한미 동시</span>
+    </div>
+    <div class="theme-grid">
+      <div class="theme-card">
+        <span class="badge badge-both">한미 공통</span>
+        <div class="theme-name">AI 반도체 &amp; 전자부품</div>
+        <div class="theme-desc">AI 인프라 수요를 중심으로 반도체 밸류체인 전반이 신고가 행진. 양국 모두에서 가장 강한 모멘텀.</div>
+        <div class="theme-tickers">미국: INTC·AMD·NVDA·KLAC | 한국: DB하이텍·대덕전자·세미파이브</div>
+      </div>
+      <div class="theme-card">
+        <span class="badge badge-both">한미 공통</span>
+        <div class="theme-name">전력 인프라 &amp; 에너지</div>
+        <div class="theme-desc">AI 데이터센터 전력 수요 확대와 에너지 전환 수혜. 전선·변압기 중심의 한국, 유전서비스·LNG의 미국.</div>
+        <div class="theme-tickers">미국: BKR·SLB·HAL·MPWR | 한국: HD현대일렉트릭·LS ELECTRIC·효성중공업</div>
+      </div>
+      <div class="theme-card">
+        <span class="badge badge-us">미국 특징</span>
+        <div class="theme-name">대형 플랫폼 &amp; AI 소프트웨어</div>
+        <div class="theme-desc">빅테크가 AI 기업 투자 확대와 실적 호조로 신고가. 국내에는 동급 플랫폼 대형주 부재.</div>
+        <div class="theme-tickers">AMZN·GOOGL·GOOG·ARM</div>
+      </div>
+      <div class="theme-card">
+        <span class="badge badge-kr">한국 특징</span>
+        <div class="theme-name">방산 &amp; 조선 수출 모멘텀</div>
+        <div class="theme-desc">지정학 긴장과 K-방산 수출 호조. 역사적 신고가 종목 다수 포함된 한국 특화 테마.</div>
+        <div class="theme-tickers">HD현대중공업·HD현대마린엔진·한화엔진·STX엔진</div>
+      </div>
+      <div class="theme-card">
+        <span class="badge badge-kr">한국 특징</span>
+        <div class="theme-name">유통 &amp; 소비 심리 반등</div>
+        <div class="theme-desc">내수 소비 심리 회복 기대감과 밸류에이션 매력이 맞물려 유통 대형주가 신고가 진입.</div>
+        <div class="theme-tickers">롯데쇼핑·신세계·호텔신라·에이피알</div>
+      </div>
+      <div class="theme-card">
+        <span class="badge badge-hist">역사적 신고가</span>
+        <div class="theme-name">초강세 소형주 돌파</div>
+        <div class="theme-desc">52주 신고가 중 ${((histCount/w52Count)*100).toFixed(0)}%가 역사적 신고가 동시 달성. 코스닥 반도체·전력기기 중심.</div>
+        <div class="theme-tickers">한화갤러리아·고영·대주전자재료·성광벤드</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="full-panel">
+      <div class="section-header" style="margin-bottom:0.75rem;">
+        <h2>미국 52주 신고가 전종목</h2>
+        <span class="badge badge-us">${us.week52.length}종목</span>
+      </div>
+      <table>
+        <thead><tr><th>티커</th><th>섹터</th><th>현재가</th><th>등락률</th><th>상승 논리</th></tr></thead>
+        <tbody>
+          ${us.week52.map(s=>`
+            <tr>
+              <td style="font-family:var(--mono);font-weight:500;">${s.ticker}</td>
+              <td class="td-mono">${s.sector}</td>
+              <td class="td-mono">$${s.price.toLocaleString()}</td>
+              <td class="td-up">+${s.change_pct.toFixed(2)}%</td>
+              <td style="color:var(--muted);font-size:12px;">${s.rationale}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="full-panel">
+      <div class="section-header" style="margin-bottom:0.75rem;">
+        <h2>한국 신고가 전종목</h2>
+        <span class="badge badge-kr">${w52Count}종목</span>
+        <span class="badge badge-hist">역사적 신고가 ${histCount}종목</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="filterKR('all',this)">전체 ${w52Count}</button>
+        <button class="tab" onclick="filterKR('hist',this)">역사적 신고가 ${histCount}</button>
+        <button class="tab" onclick="filterKR('52w',this)">52주 신고가만 ${kr.week52_only.length}</button>
+      </div>
+      <table id="krTable">
+        <thead><tr><th>종목</th><th>등락률</th><th>현재가</th><th>이전 신고가일</th><th>테마</th></tr></thead>
+        <tbody id="krTbody">
+          ${krAll.map(s=>`
+            <tr class="kr-row" data-type="${s.is_hist?'hist':'52w'}">
+              <td>${s.name}${s.is_hist?'<span class="tag-hist">역사적</span>':''}</td>
+              <td class="${s.is_hist?'td-hist':'td-up'}">+${s.change_pct.toFixed(2)}%</td>
+              <td class="td-mono">${s.current_price.toLocaleString()}원</td>
+              <td class="td-mono">${s.prev_high_date}</td>
+              <td class="td-mono">${classifyKR(s.name)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Charts
+  const usCtx = document.getElementById('usChart').getContext('2d');
+  charts.push(new Chart(usCtx, {
+    type: 'bar',
+    data: {
+      labels: sectorLabels.map(l => l.replace('Information Technology','IT').replace('Consumer Discretionary','Cons.Disc').replace('Communication Services','Comm Svc').replace('Consumer Staples','Cons.Stpl')),
+      datasets: [{ data: sectorData, backgroundColor: sectorColors, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: c.grid }, ticks: { color: c.text, font:{size:11} }, border:{display:false} },
+        y: { grid: { display:false }, ticks: { color: c.text, font:{size:11} }, border:{display:false} }
+      }
+    }
+  }));
+
+  const krCtx = document.getElementById('krChart').getContext('2d');
+  charts.push(new Chart(krCtx, {
+    type: 'bar',
+    data: {
+      labels: themeLabels,
+      datasets: [{ data: themeData, backgroundColor: themeColors, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: c.grid }, ticks: { color: c.text, font:{size:11} }, border:{display:false} },
+        y: { grid: { display:false }, ticks: { color: c.text, font:{size:11} }, border:{display:false} }
+      }
+    }
+  }));
+}
+
+function filterKR(type, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.kr-row').forEach(row => {
+    if (type === 'all') row.style.display = '';
+    else row.style.display = row.dataset.type === type ? '' : 'none';
+  });
+}
+
+loadDate('2026-04-26');
+</script>
+</body>
+</html>

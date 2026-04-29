@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>US 신고가 빠른 입력기</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0c0c; --bg2:#131313; --bg3:#1a1a1a;
+  --border:#242424; --ink:#e8e3d8; --muted:#585450;
+  --gold:#c9a84c; --accent:#7c6af7; --pos:#4caf86; --neg:#e05a5a;
+  --mono:'IBM Plex Mono',monospace; --kr:'Noto Sans KR',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--ink);font-family:var(--kr);font-size:13px;padding:24px;}
+h1{font-family:var(--mono);font-size:16px;color:var(--gold);letter-spacing:.1em;margin-bottom:6px;}
+.sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:24px;}
+
+.row{
+  display:grid;
+  grid-template-columns: 90px 160px 140px 90px 80px 80px 160px 60px 40px;
+  gap:6px; margin-bottom:6px; align-items:center;
+}
+.row-head{
+  font-family:var(--mono);font-size:10px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+  padding-bottom:6px; border-bottom:1px solid var(--border);
+  margin-bottom:6px;
+}
+input,select{
+  background:var(--bg2); border:1px solid var(--border);
+  color:var(--ink); font-family:var(--mono); font-size:12px;
+  padding:6px 8px; outline:none; width:100%;
+}
+input:focus,select:focus{border-color:var(--accent);}
+.btn{
+  padding:8px 20px; font-family:var(--mono); font-size:11px;
+  letter-spacing:.1em; cursor:pointer; border:none;
+  text-transform:uppercase;
+}
+.btn-add{background:var(--bg3);color:var(--ink);border:1px solid var(--border);}
+.btn-add:hover{border-color:var(--accent);color:var(--accent);}
+.btn-export{background:var(--gold);color:#000;}
+.btn-export:hover{background:var(--pos);}
+.btn-copy{background:var(--bg3);color:var(--ink);border:1px solid var(--border);}
+.actions{display:flex;gap:10px;margin:16px 0;}
+.output{
+  background:var(--bg2); border:1px solid var(--border);
+  font-family:var(--mono); font-size:11px;
+  padding:16px; white-space:pre; overflow-x:auto;
+  max-height:300px; overflow-y:auto; margin-top:16px;
+  color:var(--pos); display:none;
+}
+.del-btn{
+  background:none; border:none; color:var(--neg);
+  font-family:var(--mono); font-size:14px; cursor:pointer;
+  padding:0 4px; line-height:1;
+}
+.del-btn:hover{color:#ff6b6b;}
+.sector-hint{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px;}
+.notice{
+  background:rgba(124,106,247,.1); border:1px solid rgba(124,106,247,.3);
+  color:var(--accent); font-family:var(--mono); font-size:11px;
+  padding:10px 14px; margin-bottom:20px; letter-spacing:.05em;
+}
+#saved-count{color:var(--gold);}
+</style>
+</head>
+<body>
+
+<h1>US 52주 신고가 · 빠른 입력기</h1>
+<div class="sub">스크린샷 보며 입력 → JSON 복사 → us_MMDD.json 으로 저장</div>
+
+<div class="notice">
+  💡 Sector 드롭다운 선택 → 테마 자동 분류됩니다. rationale은 짧게 한 줄.
+</div>
+
+<div class="row row-head">
+  <span>Ticker</span><span>Name</span><span>Sector</span>
+  <span>Price</span><span>Chg%</span><span>52W High</span>
+  <span>Rationale</span><span>S&P500</span><span></span>
+</div>
+
+<div id="rows"></div>
+
+<div class="actions">
+  <button class="btn btn-add" onclick="addRow()">+ 행 추가</button>
+  <button class="btn btn-export" onclick="exportJSON()">▼ JSON 생성</button>
+  <button class="btn btn-copy" onclick="copyJSON()" id="copyBtn">📋 복사</button>
+</div>
+<div class="sector-hint">
+  섹터: Technology · Communication Services · Financials · Real Estate · Utilities · Energy · Consumer Discretionary · Consumer Staples · Health Care · Industrials · Materials
+</div>
+
+<div class="output" id="output"></div>
+
+<script>
+const SECTORS = [
+  "Technology","Communication Services","Financials","Real Estate",
+  "Utilities","Energy","Consumer Discretionary","Consumer Staples",
+  "Health Care","Industrials","Materials","기타"
+];
+
+let rowCount = 0;
+
+function addRow(data={}) {
+  rowCount++;
+  const id = rowCount;
+  const div = document.createElement('div');
+  div.className = 'row'; div.id = 'row-'+id;
+
+  const sectorOpts = SECTORS.map(s =>
+    `<option${data.sector===s?' selected':''}>${s}</option>`
+  ).join('');
+
+  div.innerHTML = `
+    <input type="text"   id="r${id}_ticker"    value="${data.ticker||''}"    placeholder="MRVL"   oninput="this.value=this.value.toUpperCase()">
+    <input type="text"   id="r${id}_name"      value="${data.name||''}"      placeholder="Marvell Technology">
+    <select              id="r${id}_sector">${sectorOpts}</select>
+    <input type="number" id="r${id}_price"     value="${data.price||''}"     placeholder="106.71" step="0.01">
+    <input type="number" id="r${id}_change"    value="${data.change||''}"    placeholder="7.73"   step="0.01">
+    <input type="number" id="r${id}_high52"    value="${data.high52||''}"    placeholder="106.71" step="0.01">
+    <input type="text"   id="r${id}_rationale" value="${data.rationale||''}" placeholder="AI 데이터센터 성장">
+    <select id="r${id}_sp500">
+      <option value="true"${data.sp500!==false?' selected':''}>S&P</option>
+      <option value="false"${data.sp500===false?' selected':''}>NDX</option>
+    </select>
+    <button class="del-btn" onclick="document.getElementById('row-${id}').remove()">✕</button>
+  `;
+  document.getElementById('rows').appendChild(div);
+}
+
+function getRows() {
+  const results = [];
+  document.querySelectorAll('[id^="row-"]').forEach(div => {
+    const id = div.id.replace('row-','');
+    const ticker = document.getElementById(`r${id}_ticker`)?.value.trim();
+    if (!ticker) return;
+    results.push({
+      ticker,
+      name:      document.getElementById(`r${id}_name`)?.value.trim() || ticker,
+      sector:    document.getElementById(`r${id}_sector`)?.value || '',
+      price:     parseFloat(document.getElementById(`r${id}_price`)?.value) || 0,
+      change:    parseFloat(document.getElementById(`r${id}_change`)?.value) || 0,
+      high52:    parseFloat(document.getElementById(`r${id}_high52`)?.value) || 0,
+      rationale: document.getElementById(`r${id}_rationale`)?.value.trim() || '',
+      sp500:     document.getElementById(`r${id}_sp500`)?.value === 'true',
+    });
+  });
+  return results;
+}
+
+let lastJSON = '';
+
+function exportJSON() {
+  const rows = getRows();
+  if (!rows.length) { alert('데이터를 입력해주세요'); return; }
+  lastJSON = JSON.stringify(rows, null, 2);
+  const out = document.getElementById('output');
+  out.style.display = 'block';
+  out.textContent = lastJSON;
+}
+
+function copyJSON() {
+  if (!lastJSON) { exportJSON(); }
+  navigator.clipboard.writeText(lastJSON).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ 복사됨';
+    setTimeout(()=>btn.textContent='📋 복사', 2000);
+  });
+}
+
+// 로컬스토리지 자동저장
+function autoSave() {
+  const rows = getRows();
+  if (rows.length) localStorage.setItem('us_highs_draft', JSON.stringify(rows));
+}
+
+function loadDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem('us_highs_draft') || '[]');
+    if (draft.length) {
+      draft.forEach(r => addRow(r));
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// 초기화
+if (!loadDraft()) {
+  addRow(); addRow(); addRow();
+}
+
+document.addEventListener('input', autoSave);
+document.addEventListener('change', autoSave);
+</script>
+</body>
+</html>
